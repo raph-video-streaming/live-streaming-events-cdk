@@ -1,20 +1,29 @@
 #!/usr/bin/env node
+import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { LiveStreamingCdkStack } from '../lib/live-streaming-cdk-stack';
+import { FoundationStack } from '../lib/foundation-stack';
+import { ChannelStack } from '../lib/channel-stack';
+import { config } from '../lib/config';
 
 const app = new cdk.App();
-new LiveStreamingCdkStack(app, 'LiveStreamingCdkStack', {
-  /* If you don't specify 'env', this stack will be environment-agnostic.
-   * Account/Region-dependent features and context lookups will not work,
-   * but a single synthesized template can be deployed anywhere. */
 
-  /* Uncomment the next line to specialize this stack for the AWS Account
-   * and Region that are implied by the current CLI configuration. */
-  // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+// Deploy Foundation Stack first
+const foundationStack = new FoundationStack(app, 'FoundationStack', {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION,
+  }
+});
 
-  /* Uncomment the next line if you know exactly what Account and Region you
-   * want to deploy the stack to. */
-  // env: { account: '123456789012', region: 'us-east-1' },
-
-  /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
+// Deploy Channel Stacks
+config.channels.forEach((channelConfig, index) => {
+  new ChannelStack(app, `ChannelStack-${channelConfig.name}`, {
+    channelConfig,
+    channelGroupName: foundationStack.myChannelGroup.channelGroupName!,
+    mediaLiveRoleArn: foundationStack.myMediaLiveRole.roleArn,
+    env: {
+      account: process.env.CDK_DEFAULT_ACCOUNT,
+      region: process.env.CDK_DEFAULT_REGION,
+    }
+  });
 });

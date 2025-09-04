@@ -1,14 +1,61 @@
-# Welcome to your CDK TypeScript project
+# Live Streaming CDK Project
 
-This is a blank project for CDK development with TypeScript.
+Multi-channel live streaming infrastructure with MediaConnect, MediaLive, and MediaPackage V2.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+## Architecture
 
-## Useful commands
+- **FoundationStack**: MediaPackage V2 Channel Group + shared resources
+- **ChannelStack**: Per-channel resources (2 MediaConnect flows, 1 MediaLive channel, 1 MediaPackage channel)
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
+## Configuration
+
+Edit `lib/config.ts` to configure channels:
+
+```typescript
+export const config = {
+  channelCount: 2,
+  channels: [
+    {
+      name: 'channel1',
+      mediaConnect: {
+        mainAZ: 'us-east-1a',
+        backupAZ: 'us-east-1b',
+        ingestPort: 20101
+      },
+      mediaLive: {
+        inputType: 'SRT_LISTENER',
+        encodingProfile: 'HD'
+      }
+    }
+  ]
+};
+```
+
+## Deployment
+
+```bash
+# Build
+npm run build
+
+# Deploy foundation first
+npx cdk deploy FoundationStack
+
+# Deploy all channels
+npx cdk deploy --all
+
+# Or deploy specific channel
+npx cdk deploy ChannelStack-channel1
+```
+
+## Resources Created
+
+### Per Channel:
+- 2 MediaConnect flows (main + backup)
+- 1 MediaLive input (using both flows)
+- 1 MediaLive channel
+- 1 MediaPackage V2 channel
+
+### Shared:
+- 1 MediaPackage V2 Channel Group
+- IAM roles
+- Secrets Manager entries
