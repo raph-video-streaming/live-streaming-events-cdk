@@ -46,7 +46,7 @@ export const config = {
     {
       name: 'CH01',
       mediaConnect: {
-        autoStart: true,
+        autoStart: false,
         mainAZ: 'me-central-1a',
         backupAZ: 'me-central-1b',
         mainIngestPort: 20100,
@@ -57,7 +57,7 @@ export const config = {
         secretNameDecryption: "dawri-streaming-srt-passphrase-v2"
       },
       mediaLive: {
-        autoStart: true,
+        autoStart: false,
         ingestSegmentLentgth: 1,
         channelClass: "STANDARD",
         inputType: "MEDIACONNECT",

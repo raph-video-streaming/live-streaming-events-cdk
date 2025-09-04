@@ -24,6 +24,7 @@ import { NagSuppressions } from "cdk-nag";
 
 export interface IConfigProps {
   mediaLiveChannel: string;
+  autoStart: boolean;
 }
 
 export class AutoStartMediaLive extends Construct {
@@ -38,7 +39,7 @@ export class AutoStartMediaLive extends Construct {
       this,
       "autostartEMLLambda",
       {
-        functionName: Aws.STACK_NAME + "_EML_AutoStart",
+        functionName: Aws.STACK_NAME + "_EML_Control",
         runtime: lambda.Runtime.PYTHON_3_11,
         code: lambda.Code.fromAsset(
           "lib/lambda/medialive_channel_start_function",
@@ -61,12 +62,20 @@ export class AutoStartMediaLive extends Construct {
         service: "Lambda",
         action: "invoke",
         parameters: {
-          FunctionName: Aws.STACK_NAME + "_EML_AutoStart",
-          Payload: `{"mediaLiveChannelId":"${channelEML}"}`,
+          FunctionName: Aws.STACK_NAME + "_EML_Control",
+          Payload: `{"mediaLiveChannelId":"${channelEML}","action":"${props.autoStart ? 'start' : 'stop'}"}`,
         },
         physicalResourceId: custom_resources.PhysicalResourceId.of(
           "autostartEMLResourceId",
         ),
+      },
+      onUpdate: {
+        service: "Lambda",
+        action: "invoke",
+        parameters: {
+          FunctionName: Aws.STACK_NAME + "_EML_Control",
+          Payload: `{"mediaLiveChannelId":"${channelEML}","action":"${props.autoStart ? 'start' : 'stop'}"}`,
+        },
       },
       policy: custom_resources.AwsCustomResourcePolicy.fromStatements([
         new iam.PolicyStatement({

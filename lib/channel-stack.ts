@@ -88,70 +88,64 @@ export class ChannelStack extends cdk.Stack {
       }
     );
 
-        //👇Check if AutoStart is enabled in the MediaLive configuration to start MediaLive
-    if (props.channelConfig.mediaLive.autoStart) {
-      const resource = new AutoStartMediaLive(this, "AutoStartResource", {
-        mediaLiveChannel: myMediaLiveChannel.channelLive.attrArn,
-      });
+    //👇Create MediaLive auto-start/stop resource based on configuration
+    const resource = new AutoStartMediaLive(this, "AutoStartResource", {
+      mediaLiveChannel: myMediaLiveChannel.channelLive.attrArn,
+      autoStart: props.channelConfig.mediaLive.autoStart,
+    });
 
-      // Enable adding suppressions to child constructs
-      NagSuppressions.addResourceSuppressions(
-        resource,
-        [
-          {
-            id: "AwsSolutions-IAM5",
-            reason: "Remediated through property override.",
-            appliesTo: ["Resource::*"],
-          },
-        ],
-        true,
-      );
-      NagSuppressions.addResourceSuppressions(
-        resource,
-        [
-          {
-            id: "AwsSolutions-IAM5",
-            reason: "Remediated through property override.",
-            appliesTo: ["Action::medialive:*"],
-          },
-        ],
-        true,
-      );
+    // Enable adding suppressions to child constructs
+    NagSuppressions.addResourceSuppressions(
+      resource,
+      [
+        {
+          id: "AwsSolutions-IAM5",
+          reason: "Remediated through property override.",
+          appliesTo: ["Resource::*"],
+        },
+      ],
+      true,
+    );
+    NagSuppressions.addResourceSuppressions(
+      resource,
+      [
+        {
+          id: "AwsSolutions-IAM5",
+          reason: "Remediated through property override.",
+          appliesTo: ["Action::medialive:*"],
+        },
+      ],
+      true,
+    );
 
+    //👇Create MediaConnect auto-start/stop resource based on configuration
+    const resourceMC = new AutoStartMediaConnect(this, "AutoStartMediaConnectResource", {
+      mainFlowArn: myMediaConnectFlows.mainFlow.attrFlowArn,
+      backupFlowArn: myMediaConnectFlows.backupFlow.attrFlowArn,
+      autoStart: props.channelConfig.mediaConnect.autoStart,
+    });
 
-    }
-
-    //👇Check if AutoStart is enabled in the MediaConnect configuration to start MediaConnect flows
-    if (props.channelConfig.mediaConnect.autoStart) {
-      const resourceMC = new AutoStartMediaConnect(this, "AutoStartMediaConnectResource", {
-        mainFlowArn: myMediaConnectFlows.mainFlow.attrFlowArn,
-        backupFlowArn: myMediaConnectFlows.backupFlow.attrFlowArn,
-      });
-
-      NagSuppressions.addResourceSuppressions(
-        resourceMC,
-        [
-          {
-            id: "AwsSolutions-IAM5",
-            reason: "Remediated through property override.",
-            appliesTo: ["Resource::*"],
-          },
-        ],
-        true,
-      );
-      NagSuppressions.addResourceSuppressions(
-        resourceMC,
-        [
-          {
-            id: "AwsSolutions-IAM5",
-            reason: "Remediated through property override.",
-            appliesTo: ["Action::mediaconnect:*"],
-          },
-        ],
-        true,
-      );
-
-
-    }
+    NagSuppressions.addResourceSuppressions(
+      resourceMC,
+      [
+        {
+          id: "AwsSolutions-IAM5",
+          reason: "Remediated through property override.",
+          appliesTo: ["Resource::*"],
+        },
+      ],
+      true,
+    );
+    NagSuppressions.addResourceSuppressions(
+      resourceMC,
+      [
+        {
+          id: "AwsSolutions-IAM5",
+          reason: "Remediated through property override.",
+          appliesTo: ["Action::mediaconnect:*"],
+        },
+      ],
+      true,
+    );
   }
 }

@@ -12,6 +12,7 @@ import { NagSuppressions } from "cdk-nag";
 export interface IConfigProps {
   mainFlowArn: string;
   backupFlowArn: string;
+  autoStart: boolean;
 }
 
 export class AutoStartMediaConnect extends Construct {
@@ -45,13 +46,26 @@ export class AutoStartMediaConnect extends Construct {
         statements: [mediaConnectLambdaPolicy],
       }),
     );
+    const action = props.autoStart ? "start_flows" : "stop_flows";
+    
     new custom_resources.AwsCustomResource(this, "autostartEMC", {
       onCreate: {
         service: "Lambda",
         action: "invoke",
         parameters: {
           FunctionName: Aws.STACK_NAME + "_EMC_AutoStart",
-          Payload: `{"mainFlowArn":"${props.mainFlowArn}","backupFlowArn":"${props.backupFlowArn}"}`,
+          Payload: `{"action":"${action}","mainFlowArn":"${props.mainFlowArn}","backupFlowArn":"${props.backupFlowArn}"}`,
+        },
+        physicalResourceId: custom_resources.PhysicalResourceId.of(
+          "autostartEMCResourceId",
+        ),
+      },
+      onUpdate: {
+        service: "Lambda",
+        action: "invoke",
+        parameters: {
+          FunctionName: Aws.STACK_NAME + "_EMC_AutoStart",
+          Payload: `{"action":"${action}","mainFlowArn":"${props.mainFlowArn}","backupFlowArn":"${props.backupFlowArn}"}`,
         },
         physicalResourceId: custom_resources.PhysicalResourceId.of(
           "autostartEMCResourceId",

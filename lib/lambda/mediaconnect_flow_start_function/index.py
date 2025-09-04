@@ -2,27 +2,37 @@ import boto3 as aws
 import json
 
 def lambda_handler(event, context):
-
-    print("main flow arn", event["mainFlowArn"])
-    print("backup flow arn", event["backupFlowArn"])
-
+    action = event.get("action", "start_flows")
     _main_flow_arn = event["mainFlowArn"]
     _backup_flow_arn = event["backupFlowArn"]
+    
+    print(f"Action: {action}")
+    print(f"Main flow ARN: {_main_flow_arn}")
+    print(f"Backup flow ARN: {_backup_flow_arn}")
+    
     my_emc = aws.client('mediaconnect')
     
     try:
-        # Start main flow
-        emc_response_main = my_emc.start_flow(FlowArn=_main_flow_arn)
-        print("---------------------------\n",
-        "emc response start main flow\n",
-        json.loads(json.dumps(emc_response_main, indent=2)))
+        if action == "start_flows":
+            # Start main flow
+            emc_response_main = my_emc.start_flow(FlowArn=_main_flow_arn)
+            print(f"Started main flow: {emc_response_main['Status']}")
+            
+            # Start backup flow
+            emc_response_backup = my_emc.start_flow(FlowArn=_backup_flow_arn)
+            print(f"Started backup flow: {emc_response_backup['Status']}")
+            
+        elif action == "stop_flows":
+            # Stop main flow
+            emc_response_main = my_emc.stop_flow(FlowArn=_main_flow_arn)
+            print(f"Stopped main flow: {emc_response_main['Status']}")
+            
+            # Stop backup flow
+            emc_response_backup = my_emc.stop_flow(FlowArn=_backup_flow_arn)
+            print(f"Stopped backup flow: {emc_response_backup['Status']}")
+            
+        return {"statusCode": 200, "body": f"Successfully executed {action}"}
         
-        # Start backup flow
-        emc_response_backup = my_emc.start_flow(FlowArn=_backup_flow_arn)
-        print("---------------------------\n",
-        "emc response start backup flow\n",
-        json.loads(json.dumps(emc_response_backup, indent=2)))
-
     except Exception as e:
-        print("Error Command - emc start flows failed")
-        print(e)
+        print(f"Error executing {action}: {str(e)}")
+        return {"statusCode": 500, "body": f"Failed to execute {action}: {str(e)}"}
