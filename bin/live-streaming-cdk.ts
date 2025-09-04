@@ -8,7 +8,7 @@ import { config } from '../config/encoding-profiles/config';
 const app = new cdk.App();
 
 // Deploy Foundation Stack first
-const foundationStack = new FoundationStack(app, 'FoundationStack', {
+const foundationStack = new FoundationStack(app, 'SPL-Live-FoundationStack', {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION,
@@ -18,7 +18,7 @@ const foundationStack = new FoundationStack(app, 'FoundationStack', {
 
 // Deploy Channel Stacks
 config.channels.forEach((channelConfig, index) => {
-  new ChannelStack(app, `ChannelStack-${channelConfig.name}`, {
+  new ChannelStack(app, `SPL-Live-ChannelStack-${channelConfig.name}`, {
     channelConfig,
     channelGroupMediaPackage: foundationStack.myChannelGroup,
     mediaLiveRoleArn: foundationStack.myMediaLiveRole.roleArn,

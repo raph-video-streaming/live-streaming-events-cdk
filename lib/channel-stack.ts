@@ -13,6 +13,8 @@ import { MediaLive } from "./medialive";
 import { MediaPackageV2 } from "./mediapackage_v2";
 import { MediaConnect } from "./mediaconnect";
 import { ChannelConfig } from '../config/encoding-profiles/config';
+import { AutoStartMediaLive } from "./custom_ressources/medialive-autostart";
+import { AutoStartMediaConnect } from "./custom_ressources/mediaconnect-autostart";
 
 interface ChannelStackProps extends cdk.StackProps {
   channelConfig: ChannelConfig;
@@ -86,5 +88,70 @@ export class ChannelStack extends cdk.Stack {
       }
     );
 
+        //👇Check if AutoStart is enabled in the MediaLive configuration to start MediaLive
+    if (props.channelConfig.mediaLive.autoStart) {
+      const resource = new AutoStartMediaLive(this, "AutoStartResource", {
+        mediaLiveChannel: myMediaLiveChannel.channelLive.attrArn,
+      });
+
+      // Enable adding suppressions to child constructs
+      NagSuppressions.addResourceSuppressions(
+        resource,
+        [
+          {
+            id: "AwsSolutions-IAM5",
+            reason: "Remediated through property override.",
+            appliesTo: ["Resource::*"],
+          },
+        ],
+        true,
+      );
+      NagSuppressions.addResourceSuppressions(
+        resource,
+        [
+          {
+            id: "AwsSolutions-IAM5",
+            reason: "Remediated through property override.",
+            appliesTo: ["Action::medialive:*"],
+          },
+        ],
+        true,
+      );
+
+
+    }
+
+    //👇Check if AutoStart is enabled in the MediaConnect configuration to start MediaConnect flows
+    if (props.channelConfig.mediaConnect.autoStart) {
+      const resourceMC = new AutoStartMediaConnect(this, "AutoStartMediaConnectResource", {
+        mainFlowArn: myMediaConnectFlows.mainFlow.attrFlowArn,
+        backupFlowArn: myMediaConnectFlows.backupFlow.attrFlowArn,
+      });
+
+      NagSuppressions.addResourceSuppressions(
+        resourceMC,
+        [
+          {
+            id: "AwsSolutions-IAM5",
+            reason: "Remediated through property override.",
+            appliesTo: ["Resource::*"],
+          },
+        ],
+        true,
+      );
+      NagSuppressions.addResourceSuppressions(
+        resourceMC,
+        [
+          {
+            id: "AwsSolutions-IAM5",
+            reason: "Remediated through property override.",
+            appliesTo: ["Action::mediaconnect:*"],
+          },
+        ],
+        true,
+      );
+
+
+    }
   }
 }

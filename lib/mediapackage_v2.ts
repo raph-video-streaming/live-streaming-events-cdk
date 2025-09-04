@@ -1,15 +1,12 @@
 import {
-  Aws,
   aws_iam as iam,
   Fn,
-  Duration,
   aws_mediapackagev2 as mediapackagev2,
+  CfnOutput
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { ExtraAttributes } from "./custom_ressources/mediapackage-extra-attributes";
-import { NagSuppressions } from "cdk-nag";
-import { PropagatedTagSource } from "aws-cdk-lib/aws-ecs";
-import { ChannelConfig } from '../config/encoding-profiles/config';
+
 
 
 interface MediaPackageConfig {
@@ -247,5 +244,31 @@ export class MediaPackageV2 extends Construct {
       cmafOriginEndpointName,
       llCmafManifestName,
     ]);
+
+
+
+    // Output MediaPackage URLs
+    new CfnOutput(this, 'CmafPlaybackUrl', {
+      value: this.myChannelEndpointCmafUrl,
+      description: `CMAF playback URL for ${props.channelName}`,
+      exportName: `${props.channelName}-CmafUrl`
+    });
+
+    new CfnOutput(this, 'LowLatencyCmafPlaybackUrl', {
+      value: this.myChannelEndpointLlCmafUrl,
+      description: `Low Latency CMAF playback URL for ${props.channelName}`,
+      exportName: `${props.channelName}-LlCmafUrl`
+    });
+
+    new CfnOutput(this, 'IngestEndpoint1', {
+      value: this.myChannelIngestEndpoint1,
+      description: `MediaPackage ingest endpoint 1 for ${props.channelName}`
+    });
+
+    new CfnOutput(this, 'IngestEndpoint2', {
+      value: this.myChannelIngestEndpoint2,
+      description: `MediaPackage ingest endpoint 2 for ${props.channelName}`
+    });
+
   }
 }

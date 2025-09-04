@@ -118,5 +118,19 @@ export class MediaConnect extends Construct {
       description: `Backup MediaConnect Flow ARN for ${props.channelName}`,
       exportName: `${Aws.STACK_NAME}-${props.channelName}-BackupFlowArn`,
     });
+
+    new CfnOutput(this, "MyMediaConnectChannelMainFlowSrtUrl", {
+      value: `srt://${this.mainFlow.attrSourceIngestIp}:${props.mainIngestPort}`,
+      exportName: Aws.STACK_NAME + "MainFlowSrtUrl",
+      description: "Main MediaConnect Flow SRT URL",
+    });
+
+    new CfnOutput(this, "MyMediaConnectChannelBackupFlowSrtUrl", {
+      value: `srt://${this.backupFlow.attrSourceIngestIp}:${props.backupIngestPort}`,
+      exportName: Aws.STACK_NAME + "BackupFlowSrtUrl",
+      description: "Backup MediaConnect Flow SRT URL",
+    });
+
+
   }
 }
