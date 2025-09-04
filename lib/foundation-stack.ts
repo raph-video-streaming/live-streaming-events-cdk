@@ -16,41 +16,41 @@ import { NagSuppressions } from 'cdk-nag';
 
 export class FoundationStack extends cdk.Stack {
   public readonly myChannelGroup: mediapackagev2.CfnChannelGroup;
-  public readonly myChannelGroupName: string;
   public readonly myMediaLiveRole: iam.Role;
+  public readonly myMediaPackageRole: iam.Role;
   public readonly cdnSecret: secretsmanager.Secret;
   public readonly logGroup: logs.LogGroup;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    this.myChannelGroupName = 'DAWRI-STREAMING-GROUP-CDK';
+    const myChannelGroupName = 'DAWRI-STREAMING-GROUP-CDK';
     const myChannelGroupNameDescription = 'Main channel group for all dawri-streaming streaming channels';
 
-/*
- * 1. Creating the Secret for CDN auth on MediaPackage  👇
-*/
-    const cdnSecret = new secretsmanager.Secret(this, "CdnSecret", {
-      secretName: "MediaPackageV2/" + Aws.STACK_NAME,
+    /*
+     * 1. Creating the Secret for CDN auth on MediaPackage  👇
+    */
+    this.cdnSecret = new secretsmanager.Secret(this, "CdnSecret", {
+      secretName: "MediaPackageV2/CDN-Auth-SPL-Live",
       description: "Secret for MediaPackageV2 CDN auth",
       secretStringValue: SecretValue.unsafePlainText(JSON.stringify({
         MediaPackageV2CDNIdentifier: uuidv4()
       })),
     });
-    this.cdnSecret = cdnSecret;
-    NagSuppressions.addResourceSuppressions(cdnSecret, [
+
+    NagSuppressions.addResourceSuppressions(this.cdnSecret, [
       {
         id: 'AwsSolutions-SMG4',
         reason: 'Remediated through property override.',
       },
     ]);
 
-  
-/*
- * 2. Creating the Role for MediaPackage to retrieve the secret  👇
-*/
 
-    const role4mediapackage = new iam.Role(this, "MyMediaPackagev2Role", {
+    /*
+     * 2. Creating the Role for MediaPackage to retrieve the secret  👇
+    */
+
+    this.myMediaPackageRole = new iam.Role(this, "MyMediaPackagev2Role", {
       description: "A role to be assumed by MediaPackagev2",
       assumedBy: new iam.ServicePrincipal('mediapackagev2.amazonaws.com'),
       managedPolicies: [
@@ -59,7 +59,7 @@ export class FoundationStack extends cdk.Stack {
       maxSessionDuration: Duration.hours(1),
     });
 
-    NagSuppressions.addResourceSuppressions(role4mediapackage, [
+    NagSuppressions.addResourceSuppressions(this.myMediaPackageRole, [
       {
         id: "AwsSolutions-IAM4",
         reason: "AWS managed policy required for MediaPackage V2 CDN auth",
@@ -67,32 +67,41 @@ export class FoundationStack extends cdk.Stack {
     ]);
 
 
-/*
- * 3. Creating CloudWatch Log Group for MediaPackage  👇
-*/
+    /*
+     * 3. Creating CloudWatch Log Group for MediaPackage  👇
+
     this.logGroup = new logs.LogGroup(this, 'MediaPackageLogGroup', {
-      logGroupName: `/aws/mediapackage/${this.myChannelGroupName}`,
+      logGroupName: `/aws/mediapackage/${myChannelGroupName}`,
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy: cdk.RemovalPolicy.DESTROY
     });
 
-/*
- * 4. Creating MediaPackage Channel Group with logging  👇
-*/
-    this.myChannelGroup= new mediapackagev2.CfnChannelGroup(
+        new cdk.CfnOutput(this, 'LogGroupName', {
+      value: this.logGroup.logGroupName,
+      exportName: Aws.STACK_NAME + "LogGroupName",
+      description: 'CloudWatch Log Group for MediaPackage access logs'
+    });
+
+    */
+
+
+    /*
+     * 4. Creating MediaPackage Channel Group with logging  👇
+    */
+    this.myChannelGroup = new mediapackagev2.CfnChannelGroup(
       this,
       "MyCdkChannelGroup",
       {
-        channelGroupName: this.myChannelGroupName,
+        channelGroupName: myChannelGroupName,
         description: myChannelGroupNameDescription
       },
     );
 
 
 
-/*
- * 4. Creating a shared role for all the MediaLiveChannels  👇
-*/
+    /*
+     * 4. Creating a shared role for all the MediaLiveChannels  👇
+    */
     //👇Generate Policy for MediaLive to access MediaPackage, MediaConnect, S3, MediaStore...
     const customPolicyMediaLive = new iam.PolicyDocument({
       statements: [
@@ -119,6 +128,12 @@ export class FoundationStack extends cdk.Stack {
             "mediaconnect:ManagedDescribeFlow",
             "mediaconnect:ManagedAddOutput",
             "mediaconnect:ManagedRemoveOutput",
+            "mediaconnect:DescribeFlow",
+            "mediaconnect:AddFlowOutputs",
+            "mediaconnect:RemoveFlowOutput",
+            "mediaconnect:UpdateFlow",
+            "mediaconnect:UpdateFlowOutput",
+
             "ec2:describeSubnets",
             "ec2:describeNetworkInterfaces",
             "ec2:createNetworkInterface",
@@ -143,23 +158,20 @@ export class FoundationStack extends cdk.Stack {
     this.myMediaLiveRole = role;
 
 
-    // Shared IAM role for MediaLive
-    this.myMediaLiveRole = new iam.Role(this, 'MediaLiveRole', {
-      assumedBy: new iam.ServicePrincipal('medialive.amazonaws.com'),
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AWSElementalMediaLiveFullAccess')
-      ]
-    });
-
 
 
     // Outputs
     new CfnOutput(this, "cdnSecret", {
-      value: cdnSecret.secretName,
+      value: this.cdnSecret.secretName,
       exportName: Aws.STACK_NAME + "cdnSecret",
       description: "The name of the cdnSecret for CDN auth",
     });
 
+    new cdk.CfnOutput(this, 'MediaPackageRoleArn', {
+      value: this.myMediaPackageRole.roleArn,
+      exportName: Aws.STACK_NAME + "MediaPackageRoleArn",
+      description: 'Shared MediaPackageRoleArn accross all channels for CDN auth'
+    });
 
     new cdk.CfnOutput(this, 'ChannelGroupName', {
       value: this.myChannelGroup.channelGroupName!,
@@ -173,10 +185,8 @@ export class FoundationStack extends cdk.Stack {
       description: 'Shared MediaLiveRoleArn accross all channels'
     });
 
-    new cdk.CfnOutput(this, 'LogGroupName', {
-      value: this.logGroup.logGroupName,
-      exportName: Aws.STACK_NAME + "LogGroupName",
-      description: 'CloudWatch Log Group for MediaPackage access logs'
-    });
+
+
+
   }
 }
