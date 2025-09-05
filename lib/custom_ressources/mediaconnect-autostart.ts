@@ -4,6 +4,8 @@ import {
   aws_iam as iam,
   Fn,
   aws_lambda as lambda,
+  aws_logs as logs,
+  RemovalPolicy,
 } from "aws-cdk-lib";
 
 import { Construct } from "constructs";
@@ -23,6 +25,13 @@ export class AutoStartMediaConnect extends Construct {
     const mainFlowId = Fn.select(6, Fn.split(":", props.mainFlowArn));
     const backupFlowId = Fn.select(6, Fn.split(":", props.backupFlowArn));
 
+    // Create log group first with proper removal policy
+    const logGroup = new logs.LogGroup(this, "EMCLambdaLogGroup", {
+      logGroupName: `/aws/lambda/${Aws.STACK_NAME}_EMC_AutoStart`,
+      removalPolicy: RemovalPolicy.DESTROY,
+      retention: logs.RetentionDays.ONE_WEEK,
+    });
+
     // 👇 Create the Lambda to start MediaConnect flows
     const createLambdaMediaConnect = new lambda.Function(
       this,
@@ -34,6 +43,7 @@ export class AutoStartMediaConnect extends Construct {
           "lib/lambda/mediaconnect_flow_start_function",
         ),
         handler: "index.lambda_handler",
+        logGroup: logGroup,
       },
     );
     // add the policy to the Function's role

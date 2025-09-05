@@ -17,6 +17,8 @@ import {
   aws_iam as iam,
   Fn,
   aws_lambda as lambda,
+  aws_logs as logs,
+  RemovalPolicy,
 } from "aws-cdk-lib";
 
 import { Construct } from "constructs";
@@ -34,6 +36,13 @@ export class AutoStartMediaLive extends Construct {
     //extracting the MediaLive channel ID from the ARN
     const channelEML = Fn.select(6, Fn.split(":", props.mediaLiveChannel));
 
+    // Create log group first with proper removal policy
+    const logGroup = new logs.LogGroup(this, "EMLLambdaLogGroup", {
+      logGroupName: `/aws/lambda/${Aws.STACK_NAME}_EML_Control`,
+      removalPolicy: RemovalPolicy.DESTROY,
+      retention: logs.RetentionDays.ONE_WEEK,
+    });
+
     // 👇 Create the Lambda to start MediaLive
     const createLambdaMediaLive = new lambda.Function(
       this,
@@ -45,6 +54,7 @@ export class AutoStartMediaLive extends Construct {
           "lib/lambda/medialive_channel_start_function",
         ),
         handler: "index.lambda_handler",
+        logGroup: logGroup,
       },
     );
     // add the policy to the Function's role

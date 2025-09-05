@@ -16,6 +16,8 @@ import {
   Aws,
   aws_iam as iam,
   aws_lambda as lambda,
+  aws_logs as logs,
+  RemovalPolicy,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { NagSuppressions } from "cdk-nag";
@@ -35,6 +37,13 @@ export class ExtraAttributes extends Construct {
     const functionName = `${Aws.STACK_NAME}_EMP_ExtraAttributes`;
     const ssmNamePrefix = `${Aws.STACK_NAME}`;
 
+    // Create log group first with proper removal policy
+    const logGroup = new logs.LogGroup(this, "EMPLambdaLogGroup", {
+      logGroupName: `/aws/lambda/${functionName}`,
+      removalPolicy: RemovalPolicy.DESTROY,
+      retention: logs.RetentionDays.ONE_WEEK,
+    });
+
     const getExtraAttrib = new lambda.Function(this, "extraAttribEMPLambda", {
       functionName: functionName,
       runtime: lambda.Runtime.PYTHON_3_13,
@@ -42,6 +51,7 @@ export class ExtraAttributes extends Construct {
         "lib/lambda/mediapackage_extra_attrib_function",
       ),
       handler: "index.lambda_handler",
+      logGroup: logGroup,
     });
 
     // add the policy to the Function's role
@@ -151,34 +161,7 @@ export class ExtraAttributes extends Construct {
           "This is a false alarm caused by a bug in the nag library. Lambda is running latest available Python 3.11.",
       },
     ]);
-    // Custom resource to clean up log group and SSM parameters on stack deletion
-    const cleanupResource = new custom_resources.AwsCustomResource(
-      this,
-      "CleanupResource",
-      {
-        onDelete: {
-          service: "CloudWatchLogs",
-          action: "deleteLogGroup",
-          parameters: {
-            logGroupName: `/aws/lambda/${functionName}`,
-          },
-          ignoreErrorCodesMatching: "ResourceNotFoundException",
-        },
-        policy: custom_resources.AwsCustomResourcePolicy.fromStatements([
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: [
-              "logs:DeleteLogGroup",
-              "ssm:DeleteParameter",
-            ],
-            resources: [
-              `arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:/aws/lambda/${functionName}*`,
-              `arn:aws:ssm:${Aws.REGION}:${Aws.ACCOUNT_ID}:parameter/${ssmNamePrefix}-*`,
-            ],
-          }),
-        ]),
-      },
-    );
+
 
     // Add SSM parameter cleanup
     const ssmCleanup = new custom_resources.AwsCustomResource(

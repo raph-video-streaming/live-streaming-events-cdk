@@ -41,7 +41,6 @@ export interface ChannelConfig {
 }
 
 export const config = {
-  channelCount: 1,
   channels: [
     {
       name: 'CH01',
@@ -81,7 +80,7 @@ export const config = {
         cmafStartoverWindowSeconds: 1209600
       }
     },
-        {
+    {
       name: 'CH02',
       mediaConnect: {
         autoStart: false,
@@ -90,7 +89,7 @@ export const config = {
         mainIngestPort: 20200,
         backupIngestPort: 20201,
         whitelistCidr: "0.0.0.0/0",
-        decryption: true,
+        decryption: false,
         roleNameDecryption: "dawri-streaming-mediaconnect-role",
         secretNameDecryption: "dawri-streaming-srt-passphrase-v2"
       },

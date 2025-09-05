@@ -12,7 +12,12 @@ import {
 import { SecretValue } from 'aws-cdk-lib';
 import { v4 as uuidv4 } from 'uuid';
 import { NagSuppressions } from 'cdk-nag';
+import { FoundationProtection } from './custom_ressources/foundation-protection';
 
+
+interface FoundationStackProps extends cdk.StackProps {
+  channelNames?: string[];
+}
 
 export class FoundationStack extends cdk.Stack {
   public readonly myChannelGroup: mediapackagev2.CfnChannelGroup;
@@ -21,7 +26,7 @@ export class FoundationStack extends cdk.Stack {
   public readonly cdnSecret: secretsmanager.Secret;
   public readonly logGroup: logs.LogGroup;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: FoundationStackProps) {
     super(scope, id, props);
 
     const myChannelGroupName = 'DAWRI-STREAMING-GROUP-CDK';
@@ -185,8 +190,11 @@ export class FoundationStack extends cdk.Stack {
       description: 'Shared MediaLiveRoleArn accross all channels'
     });
 
-
-
-
+    // Add foundation protection if channel names are provided
+    if (props?.channelNames && props.channelNames.length > 0) {
+      new FoundationProtection(this, 'FoundationProtection', {
+        channelNames: props.channelNames,
+      });
+    }
   }
 }
