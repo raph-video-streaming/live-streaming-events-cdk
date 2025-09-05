@@ -61,6 +61,7 @@ export class MediaPackageV2 extends Construct {
     const lowLatencyVariantManifestName = "ll-variant";
     const segmentName = "segment";
 
+    const cdnHostname = 'alibaba.servers8.com'
     const adTrigger = [
       "SPLICE_INSERT",
       "PROGRAM",
@@ -246,18 +247,47 @@ export class MediaPackageV2 extends Construct {
     ]);
 
 
+    /*
+        // Output MediaPackage URLs
+        new CfnOutput(this, 'CmafPlaybackUrl', {
+          value: this.myChannelEndpointCmafUrl,
+          description: `CMAF playback URL for ${props.channelName}`,
+          exportName: `${props.channelName}-CmafUrl`
+        });
+    
+        new CfnOutput(this, 'LowLatencyCmafPlaybackUrl', {
+          value: this.myChannelEndpointLlCmafUrl,
+          description: `Low Latency CMAF playback URL for ${props.channelName}`,
+          exportName: `${props.channelName}-LlCmafUrl`
+        });
+    */
 
-    // Output MediaPackage URLs
-    new CfnOutput(this, 'CmafPlaybackUrl', {
-      value: this.myChannelEndpointCmafUrl,
-      description: `CMAF playback URL for ${props.channelName}`,
-      exportName: `${props.channelName}-CmafUrl`
-    });
-
+    const llCmafPathEMP = Fn.select(
+      1,
+      Fn.split("/out/", this.myChannelEndpointLlCmafUrl),
+    );
     new CfnOutput(this, 'LowLatencyCmafPlaybackUrl', {
-      value: this.myChannelEndpointLlCmafUrl,
+      value:
+        "https://" +
+        cdnHostname +
+        "/out/" +
+        llCmafPathEMP,
       description: `Low Latency CMAF playback URL for ${props.channelName}`,
       exportName: `${props.channelName}-LlCmafUrl`
+    });
+
+    const cmafPathEMP = Fn.select(
+      1,
+      Fn.split("/out/", this.myChannelEndpointCmafUrl),
+    );
+    new CfnOutput(this, 'CmafPlaybackUrl', {
+      value:
+        "https://" +
+        cdnHostname +
+        "/out/" +
+        cmafPathEMP,
+      description: `CMAF playback URL for ${props.channelName}`,
+      exportName: `${props.channelName}-CmafUrl`
     });
 
     new CfnOutput(this, 'IngestEndpoint1', {

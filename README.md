@@ -1,115 +1,177 @@
-# Live Streaming CDK Project
+# AWS Live Streaming CDK Multi-Channel Solution
 
-Multi-channel live streaming infrastructure with MediaConnect, MediaLive, and MediaPackage V2.
+Enterprise-grade multi-channel live streaming infrastructure using AWS MediaConnect, MediaLive, and MediaPackage V2 with automated deployment and lifecycle management.
 
-## Architecture
+![Stack Architecture](stack-view.png)
 
-- **FoundationStack**: MediaPackage V2 Channel Group + shared IAM roles + Secrets Manager
-- **ChannelStack**: Per-channel resources (2 MediaConnect flows, 1 MediaLive channel, 1 MediaPackage V2 channel + endpoints)
+## 🏗️ Architecture Overview
 
-## Configuration
+This solution deploys a scalable, multi-channel live streaming infrastructure with three main stack types:
 
-Edit `config/encoding-profiles/config.ts` to configure channels:
+- **CleanupStack**: Manages automatic deletion of removed channel stacks
+- **FoundationStack**: Shared resources (MediaPackage V2 Channel Group, IAM roles, Secrets)
+- **ChannelStack**: Per-channel resources with full redundancy
+
+## 🚀 Quick Start
+
+### Prerequisites
+- AWS CLI configured
+- Node.js 18+ and npm
+- AWS CDK v2 installed globally
+
+### Deployment
+
+```bash
+# Install dependencies
+npm install
+
+# Deploy all stacks (recommended)
+cdk deploy --require-approval never --all
+
+# Or deploy individually
+cdk deploy SPL-Live-CleanupStack
+cdk deploy SPL-Live-FoundationStack
+cdk deploy SPL-Live-ChannelStack-CH01
+```
+
+## ⚙️ Configuration
+
+Edit `config/encoding-profiles/config.ts` to manage your channels:
 
 ```typescript
 export const config = {
-  channelCount: 2,
   channels: [
     {
       name: 'CH01',
       mediaConnect: {
-        autoStart: true,
+        autoStart: false,        // Auto start/stop flows
         mainAZ: 'me-central-1a',
         backupAZ: 'me-central-1b',
         mainIngestPort: 20100,
         backupIngestPort: 20101,
         whitelistCidr: "0.0.0.0/0",
-        decryption: false,
-        roleNameDecryption: "dawri-streaming-mediaconnect-role",
-        secretNameDecryption: "dawri-streaming-srt-passphrase-v2"
+        decryption: false
       },
       mediaLive: {
-        autoStart: true,
-        ingestSegmentLentgth: 1,
+        autoStart: false,        // Auto start/stop channel
         channelClass: "STANDARD",
         inputType: "MEDIACONNECT",
-        sourceEndBehavior: "LOOP",
         codec: "AVC",
         encodingProfile: "HD-1080p"
       },
       mediaPackage: {
         ingestType: "CMAF",
-        adMarkers: "DATERANGE",
         hlsSegmentDurationSeconds: 4,
-        hlsPlaylistWindowSeconds: 60,
-        hlsIncludeIframe: true,
-        hlsAudioRenditionGroup: true,
-        hlsProgramDateInterval: 60,
-        hlsStartoverWindowSeconds: 1209600,
-        cmafSegmentDurationSeconds: 4,
-        cmafIncludeIFrame: true,
-        cmafProgramDateInterval: 60,
-        cmafPlaylistWindowSeconds: 60,
-        cmafStartoverWindowSeconds: 1209600
+        cmafSegmentDurationSeconds: 4
+        // ... additional settings
       }
     }
   ]
 };
 ```
 
-## Deployment
+### Adding/Removing Channels
 
-```bash
-# Install dependencies
-npm install
+1. **Add Channel**: Add new channel object to `config.channels` array
+2. **Remove Channel**: Remove channel from `config.channels` array
+3. **Deploy**: Run `cdk deploy --require-approval never --all`
 
-# Build
-npm run build
+✅ **Automatic Stack Management**: Removed channels trigger automatic stack deletion
 
-# Deploy foundation first (required)
-npx cdk deploy FoundationStack
+## 📦 Stack Resources
 
-# Deploy all channels
-npx cdk deploy --all
+### CleanupStack
+- Lambda function for automatic stack lifecycle management
+- SSM Parameter Store for tracking deployed channels
+- CloudFormation stack deletion automation
 
-# Or deploy specific channel
-npx cdk deploy ChannelStack-CH01
+### FoundationStack (Shared)
+- **MediaPackage V2 Channel Group**: `DAWRI-STREAMING-GROUP-CDK`
+- **IAM Roles**: MediaLive + MediaPackage with least-privilege permissions
+- **Secrets Manager**: CDN authentication secrets
+- **Foundation Protection**: Prevents deletion while channels exist
+
+### ChannelStack (Per Channel)
+- **MediaConnect**: 2 SRT flows (main + backup, multi-AZ)
+- **MediaLive**: Input + Channel with HD encoding profiles
+- **MediaPackage V2**: Channel + CMAF endpoint with CDN auth
+- **Custom Resources**: 
+  - Auto start/stop for MediaConnect flows
+  - Auto start/stop for MediaLive channels
+  - Ingest endpoint extraction to SSM
+- **Outputs**: Playback URLs, ingest endpoints, resource ARNs
+
+## 🔧 Key Features
+
+### 🔄 Automated Lifecycle Management
+- **Auto Start/Stop**: Configure `autoStart: true/false` for MediaConnect and MediaLive
+- **Stack Cleanup**: Automatic deletion of removed channel stacks
+- **Dependency Management**: Proper deletion order with foundation protection
+
+### 🛡️ High Availability & Security
+- **Multi-AZ Redundancy**: MediaConnect flows across availability zones
+- **SRT Protocol**: Secure, low-latency ingest
+- **CDN Authentication**: Token-based content protection
+- **IAM Best Practices**: Least-privilege access policies
+
+### 📊 Monitoring & Observability
+- **CloudWatch Logs**: Structured logging for all Lambda functions
+- **SSM Parameters**: Centralized configuration and endpoint storage
+- **Stack Dependencies**: Clear resource relationships and dependencies
+
+## 🔍 CloudWatch Log Insights
+
+Query User-Agent popularity:
+```sql
+fields @timestamp, @message
+| parse @message /User-Agent: (?<user_agent>[^"]*)/
+| stats count(*) by user_agent
+| sort count desc
 ```
 
-## Resources Created
+## 🚨 Troubleshooting
 
-### Foundation Stack (Shared):
-- 1 MediaPackage V2 Channel Group (`DAWRI-STREAMING-GROUP-CDK`)
-- MediaLive IAM role with MediaConnect permissions
-- MediaPackage V2 IAM role for CDN authentication
-- Secrets Manager secret for CDN authentication
-- CloudWatch log group (optional)
+### Common Issues
 
-### Per Channel Stack:
-- **MediaConnect**: 2 SRT listener flows (main + backup in different AZs)
-- **MediaLive**: 1 input (using both flows) + 1 channel with HD encoding
-- **MediaPackage V2**: 1 channel + CMAF origin endpoint with CDN auth
-- **Custom Resources**: Lambda function to extract ingest endpoints to SSM parameters
-- **Outputs**: Channel URLs, ingest endpoints, ARNs
+**Log Group Already Exists**: 
+- Fixed with explicit log group management and `RemovalPolicy.DESTROY`
 
-## Key Features
+**Stack Deletion Dependencies**: 
+- Foundation stack protected until all channel stacks are deleted
+- Cleanup stack handles proper deletion order
 
-- **Multi-AZ redundancy**: MediaConnect flows in different availability zones
-- **SRT ingest**: Secure Reliable Transport protocol for low-latency streaming
-- **CMAF packaging**: Common Media Application Format for adaptive streaming
-- **CDN authentication**: Secure content delivery with secret-based auth
-- **Auto-cleanup**: Proper resource cleanup on stack deletion
-- **Cross-stack dependencies**: Foundation resources shared across channels
+**Cross-Stack Export Errors**: 
+- Channel stacks must be deleted before foundation stack
+- Use `cdk destroy --all` or delete in reverse dependency order
 
-## Monitoring
+## 📝 Development
 
-- CloudWatch logs for Lambda functions
-- MediaLive channel metrics
-- MediaPackage access logs (configurable)
+```bash
+# Build TypeScript
+npm run build
 
-## Security
+# Run tests
+npm test
 
-- IAM roles with least-privilege permissions
-- Secrets Manager for sensitive data
-- CDN authentication for content protection
-- VPC-based networking (MediaConnect)
+# Watch mode
+npm run watch
+
+# CDK commands
+cdk diff           # Show changes
+cdk synth          # Generate CloudFormation
+cdk destroy --all  # Delete all stacks
+```
+
+## 🏷️ Resource Naming Convention
+
+- **Stacks**: `SPL-Live-{StackType}-{ChannelName}`
+- **Functions**: `{StackName}_{ServiceType}_{Action}`
+- **Parameters**: `{StackName}-{ResourceType}`
+
+## 📄 License
+
+This project is licensed under the Apache License 2.0.
+
+---
+
+**Built with AWS CDK v2 | TypeScript | Python**

@@ -79,44 +79,6 @@ export const config = {
         cmafPlaylistWindowSeconds: 60,
         cmafStartoverWindowSeconds: 1209600
       }
-    },
-    {
-      name: 'CH02',
-      mediaConnect: {
-        autoStart: false,
-        mainAZ: 'me-central-1a',
-        backupAZ: 'me-central-1b',
-        mainIngestPort: 20200,
-        backupIngestPort: 20201,
-        whitelistCidr: "0.0.0.0/0",
-        decryption: false,
-        roleNameDecryption: "dawri-streaming-mediaconnect-role",
-        secretNameDecryption: "dawri-streaming-srt-passphrase-v2"
-      },
-      mediaLive: {
-        autoStart: false,
-        ingestSegmentLentgth: 1,
-        channelClass: "STANDARD",
-        inputType: "MEDIACONNECT",
-        sourceEndBehavior: "LOOP",
-        codec: "AVC",
-        encodingProfile: "HD-1080p"
-      },
-      mediaPackage: {
-        ingestType: "CMAF",
-        adMarkers: "DATERANGE",
-        hlsSegmentDurationSeconds: 4,
-        hlsPlaylistWindowSeconds: 60,
-        hlsIncludeIframe: true,
-        hlsAudioRenditionGroup: true,
-        hlsProgramDateInterval: 60,
-        hlsStartoverWindowSeconds: 1209600,
-        cmafSegmentDurationSeconds: 4,
-        cmafIncludeIFrame: true,
-        cmafProgramDateInterval: 60,
-        cmafPlaylistWindowSeconds: 60,
-        cmafStartoverWindowSeconds: 1209600
-      }
     }
   ]
 };

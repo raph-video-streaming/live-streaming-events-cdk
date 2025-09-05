@@ -17,8 +17,24 @@ def lambda_handler(event, context):
         except ssm_client.exceptions.ParameterNotFound:
             previous_channels = []
         
-        # Find channels to remove
-        channels_to_remove = [ch for ch in previous_channels if ch not in current_channels]
+        # Also scan for existing channel stacks to catch any orphaned ones
+        existing_stacks = []
+        try:
+            paginator = cf_client.get_paginator('list_stacks')
+            for page in paginator.paginate(StackStatusFilter=['CREATE_COMPLETE', 'UPDATE_COMPLETE']):
+                for stack in page['StackSummaries']:
+                    if stack['StackName'].startswith('SPL-Live-ChannelStack-'):
+                        channel_name = stack['StackName'].replace('SPL-Live-ChannelStack-', '')
+                        existing_stacks.append(channel_name)
+        except Exception as e:
+            print(f"Error listing stacks: {str(e)}")
+        
+        # Find channels to remove (from config + orphaned stacks)
+        channels_to_remove = list(set([ch for ch in previous_channels if ch not in current_channels] + 
+                                    [ch for ch in existing_stacks if ch not in current_channels]))
+        
+        print(f"Existing channel stacks: {existing_stacks}")
+        print(f"Channels to remove: {channels_to_remove}")
         
         # Delete stacks for removed channels and wait for completion
         for channel in channels_to_remove:
