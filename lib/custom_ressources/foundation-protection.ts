@@ -63,5 +63,23 @@ export class FoundationProtection extends Construct {
         }),
       ]),
     });
+
+    // Cleanup log group on stack deletion
+    new custom_resources.AwsCustomResource(this, "LogGroupCleanup", {
+      onDelete: {
+        service: "CloudWatchLogs",
+        action: "deleteLogGroup",
+        parameters: {
+          logGroupName: logGroup.logGroupName,
+        },
+        ignoreErrorCodesMatching: "ResourceNotFoundException",
+      },
+      policy: custom_resources.AwsCustomResourcePolicy.fromStatements([
+        new iam.PolicyStatement({
+          actions: ["logs:DeleteLogGroup"],
+          resources: [logGroup.logGroupArn],
+        }),
+      ]),
+    });
   }
 }

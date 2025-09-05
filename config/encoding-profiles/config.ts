@@ -1,6 +1,3 @@
-import { CodeCommitSourceAction } from "aws-cdk-lib/aws-codepipeline-actions";
-import { codebuild } from "cdk-nag/lib/rules";
-
 export interface ChannelConfig {
   name: string;
   mediaConnect: {
@@ -43,7 +40,7 @@ export interface ChannelConfig {
 export const config = {
   channels: [
     {
-      name: 'CH01',
+      name: 'CH03',
       mediaConnect: {
         autoStart: false,
         mainAZ: 'me-central-1a',

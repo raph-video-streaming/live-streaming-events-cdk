@@ -71,6 +71,17 @@ export class StackCleanup extends Construct {
           }),
         },
       },
+      onDelete: {
+        service: "Lambda",
+        action: "invoke",
+        parameters: {
+          FunctionName: cleanupLambda.functionName,
+          Payload: JSON.stringify({
+            currentChannels: [],
+            action: "cleanup_all",
+          }),
+        },
+      },
       policy: custom_resources.AwsCustomResourcePolicy.fromStatements([
         new iam.PolicyStatement({
           actions: ["lambda:InvokeFunction"],

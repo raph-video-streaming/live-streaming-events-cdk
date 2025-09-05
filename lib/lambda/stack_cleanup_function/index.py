@@ -3,11 +3,16 @@ import json
 
 def lambda_handler(event, context):
     current_channels = event.get('currentChannels', [])
+    action = event.get('action', 'cleanup')
     
     cf_client = boto3.client('cloudformation')
     ssm_client = boto3.client('ssm')
     
     parameter_name = '/live-streaming/deployed-channels'
+    
+    # If cleanup_all action, delete all channel stacks
+    if action == 'cleanup_all':
+        current_channels = []
     
     try:
         # Get previously deployed channels
@@ -17,11 +22,14 @@ def lambda_handler(event, context):
         except ssm_client.exceptions.ParameterNotFound:
             previous_channels = []
         
-        # Also scan for existing channel stacks to catch any orphaned ones
+        # Scan for ALL existing channel stacks
         existing_stacks = []
         try:
             paginator = cf_client.get_paginator('list_stacks')
-            for page in paginator.paginate(StackStatusFilter=['CREATE_COMPLETE', 'UPDATE_COMPLETE']):
+            for page in paginator.paginate(StackStatusFilter=[
+                'CREATE_COMPLETE', 'UPDATE_COMPLETE', 'CREATE_IN_PROGRESS', 
+                'UPDATE_IN_PROGRESS', 'ROLLBACK_COMPLETE'
+            ]):
                 for stack in page['StackSummaries']:
                     if stack['StackName'].startswith('SPL-Live-ChannelStack-'):
                         channel_name = stack['StackName'].replace('SPL-Live-ChannelStack-', '')
@@ -29,9 +37,12 @@ def lambda_handler(event, context):
         except Exception as e:
             print(f"Error listing stacks: {str(e)}")
         
-        # Find channels to remove (from config + orphaned stacks)
-        channels_to_remove = list(set([ch for ch in previous_channels if ch not in current_channels] + 
-                                    [ch for ch in existing_stacks if ch not in current_channels]))
+        # Find channels to remove
+        if action == 'cleanup_all':
+            channels_to_remove = existing_stacks
+        else:
+            channels_to_remove = list(set([ch for ch in previous_channels if ch not in current_channels] + 
+                                        [ch for ch in existing_stacks if ch not in current_channels]))
         
         print(f"Existing channel stacks: {existing_stacks}")
         print(f"Channels to remove: {channels_to_remove}")
